@@ -17,11 +17,13 @@ ORDER_QUANTITY = 1
 
 
 def place_buy_order(symbol: str) -> dict:
-    ka.auth(svr="vps", product="01")
+    #ka.auth(svr="vps", product="01") #데모
+    ka.auth(svr="prod", product="01") #실전
     trenv = ka.getTREnv()
 
     result = order_cash(
-        env_dv="demo",
+        #env_dv="demo", #데모
+        env_dv="real", #실전
         ord_dv="buy",
         cano=trenv.my_acct,
         acnt_prdt_cd=trenv.my_prod,
