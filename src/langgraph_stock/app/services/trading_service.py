@@ -16,8 +16,7 @@ def execute_trading_logic(
 
     result = graph.invoke({
         "symbols": symbols,
-        "analysis_results": {},
-        "decisions": {},
+        "approved_symbols": [],
         "orders": [],
     })
 
