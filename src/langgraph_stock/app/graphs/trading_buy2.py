@@ -3,7 +3,7 @@ from typing import Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from app.chains.stock_pick_chain import stock_pick_chain
+from app.chains.stock_pick_chain2 import overseas_stock_pick_chain
 from app.repositories.report_repository import (
     fetch_latest_market_report,
     save_bot_trade,
@@ -11,16 +11,18 @@ from app.repositories.report_repository import (
     save_stock_pick,
     update_bot_trade_price,
 )
-from app.stocks.name_resolve import resolve_stock_by_name
-from app.stock_order.buy import place_buy_order
+from app.stock_order.buy_overseas import (
+    fetch_yahoo_stock_name,
+    place_overseas_buy_order,
+)
 
 
 logger = logging.getLogger(__name__)
 
-TRADING_BUY1_BOT_ID = 401
+TRADING_BUY2_BOT_ID = 501
 
 
-class TradingBuy1State(TypedDict):
+class TradingBuy2State(TypedDict):
     report_id: int | None
     report_text: str
     pick_id: int | None
@@ -31,20 +33,16 @@ class TradingBuy1State(TypedDict):
     orders: list[dict]
 
 
-def _normalize_symbol(symbol: str) -> str:
+def _normalize_ticker(symbol: str) -> str:
     code = str(symbol or "").strip().upper()
-    if code.startswith("A") and code[1:].isdigit():
+    if code.startswith("$"):
         code = code[1:]
-    if code.isdigit():
-        return code.zfill(6)
-    return code
+    if ":" in code:
+        code = code.split(":")[-1]
+    return code.strip()
 
 
-def _is_kr_code(symbol: str) -> bool:
-    return len(symbol) == 6 and symbol.isdigit()
-
-
-def load_report(state: TradingBuy1State):
+def load_report(state: TradingBuy2State):
     report = fetch_latest_market_report()
 
     if not report:
@@ -61,7 +59,7 @@ def load_report(state: TradingBuy1State):
     }
 
 
-def pick_stock(state: TradingBuy1State):
+def pick_stock(state: TradingBuy2State):
     report_text = state.get("report_text") or ""
     if not report_text:
         logger.warning("[node2] 리포트 본문이 없어 종목을 뽑지 않습니다")
@@ -72,30 +70,24 @@ def pick_stock(state: TradingBuy1State):
             "stock_name": "",
             "reason": "",
         }
-    pick = stock_pick_chain.invoke({"report_text": report_text})
+
+    pick = overseas_stock_pick_chain.invoke({"report_text": report_text})
+    symbol = _normalize_ticker(pick.symbol)
     stock_name = (pick.stock_name or "").strip()
     reason = (pick.reason or "").strip()
 
-    master = resolve_stock_by_name(stock_name)
-    if not master:
-        logger.warning("[node2] STOCK_MASTER에서 종목코드를 찾지 못함 name=%s", stock_name)
-        return {
-            "pick_id": None,
-            "trade_id": None,
-            "symbol": "",
-            "stock_name": stock_name,
-            "reason": reason,
-        }
-
-    symbol = _normalize_symbol(master["short_code"])
-    stock_name = master["stock_name"]
-    logger.info(
-        "[node2] LLM name=%s → code=%s official=%s match=%s",
-        pick.stock_name,
-        symbol,
-        stock_name,
-        master.get("match_type"),
-    )
+    yahoo_name = fetch_yahoo_stock_name(symbol)
+    if yahoo_name:
+        if stock_name and stock_name != yahoo_name:
+            logger.warning(
+                "[node2] 종목명 불일치 ticker=%s LLM=%s yfinance=%s",
+                symbol,
+                stock_name,
+                yahoo_name,
+            )
+        stock_name = yahoo_name
+    else:
+        logger.warning("[node2] yfinance 종목명 없음 ticker=%s", symbol)
 
     pick_id = save_stock_pick(
         report_id=state.get("report_id"),
@@ -104,7 +96,7 @@ def pick_stock(state: TradingBuy1State):
         reason=reason,
     )
     trade_id = save_bot_trade(
-        bot_id=TRADING_BUY1_BOT_ID,
+        bot_id=TRADING_BUY2_BOT_ID,
         symbol=symbol,
         symbol_name=stock_name,
         select_reason=reason,
@@ -126,37 +118,37 @@ def pick_stock(state: TradingBuy1State):
     }
 
 
-def should_buy(state: TradingBuy1State) -> Literal["place_order", "end"]:
-    symbol = _normalize_symbol(state.get("symbol") or "")
-    if _is_kr_code(symbol):
+def should_buy(state: TradingBuy2State) -> Literal["place_order", "end"]:
+    symbol = (state.get("symbol") or "").strip().upper()
+    if 1 <= len(symbol) <= 10 and not symbol.isdigit():
         return "place_order"
-    logger.info("[route] 종목코드가 유효하지 않아 매수 생략: %s", symbol)
+    logger.info("[route] 해외 티커가 유효하지 않아 매수 생략: %s", symbol)
     return "end"
 
 
-def place_order(state: TradingBuy1State):
+def place_order(state: TradingBuy2State):
     symbol = state["symbol"]
-    logger.info("[buy] 추천 종목 %s 시장가 매수", symbol)
-    order = place_buy_order(symbol)
+    logger.info("[buy] 추천 종목 %s 지정가 매수", symbol)
+    order_result = place_overseas_buy_order(symbol)
 
     save_stock_order(
         pick_id=state.get("pick_id"),
         symbol=symbol,
-        buy_price=order.get("buy_price"),
-        buy_qty=order.get("quantity"),
-        order_success=order.get("success"),
-        order_raw=order,
+        buy_price=order_result.get("buy_price"),
+        buy_qty=order_result.get("quantity"),
+        order_success=order_result.get("success"),
+        order_raw=order_result,
     )
     trade_id = state.get("trade_id")
     if trade_id:
-        update_bot_trade_price(trade_id, order.get("buy_price"))
+        update_bot_trade_price(trade_id, order_result.get("buy_price"))
 
     return {
-        "orders": [order],
+        "orders": [order_result],
     }
 
 
-builder = StateGraph(TradingBuy1State)
+builder = StateGraph(TradingBuy2State)
 
 builder.add_node("load_report", load_report)
 builder.add_node("pick_stock", pick_stock)

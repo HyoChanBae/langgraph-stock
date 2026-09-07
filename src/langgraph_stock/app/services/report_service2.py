@@ -1,9 +1,8 @@
 import logging
-from datetime import datetime
 
 from app.config import settings  # noqa: F401  dotenv 로드
 from app.chains.report_chain2 import market_flow_chain
-from app.repositories.report_repository import save_market_report
+from app.repositories.report_repository import kst_now, save_market_report
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +14,8 @@ def execute_report_logic(
     market_context: str = "",
     as_of: str | None = None,
 ):
-    as_of = as_of or datetime.now().strftime("%Y-%m-%d %H:%M")
+    created_at = kst_now()
+    as_of = as_of or created_at.strftime("%Y-%m-%d %H:%M KST")
 
     logger.info("[ReportService2] market flow report as_of=%s", as_of)
 
@@ -23,6 +23,7 @@ def execute_report_logic(
         "as_of": as_of,
         "market_context": market_context or "데이터 없음 (테스트)",
     })
+    report_text = f"기준 시각: {as_of}\n\n{report_text}"
 
     logger.info("[ReportService2] report generated")
 
@@ -30,6 +31,7 @@ def execute_report_logic(
         symbols=[MARKET_FLOW_SYMBOL],
         report=report_text,
         market_context=market_context,
+        created_at=created_at.replace(tzinfo=None),
     )
 
     logger.info("[ReportService2] saved to snowflake id=%s", report_id)

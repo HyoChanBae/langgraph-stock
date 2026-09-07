@@ -9,17 +9,41 @@ for _path in (_APP_DIR, _STOCK_ORDER_DIR):
         sys.path.insert(0, str(_path))
 
 import kis_auth as ka
-from domestic_stock_functions import order_cash
+from domestic_stock_functions import inquire_price, order_cash
 
 
 STOCK_CODE = "044380"
 ORDER_QUANTITY = 1
 
 
+def _price_row(symbol: str):
+    price_df = inquire_price("real", "J", symbol)
+    if price_df.empty:
+        return None, price_df
+    return price_df.iloc[0], price_df
+
+
+def _fetch_buy_price(symbol: str) -> float | None:
+    row, price_df = _price_row(symbol)
+    if row is None:
+        return None
+
+    for col in ("stck_prpr", "STCK_PRPR"):
+        if col in price_df.columns and row[col] not in (None, ""):
+            return float(row[col])
+    return None
+
+
+def fetch_buy_price(symbol: str) -> float | None:
+    ka.auth(svr="prod", product="01")
+    return _fetch_buy_price(symbol)
+
+
 def place_buy_order(symbol: str) -> dict:
     #ka.auth(svr="vps", product="01") #데모
     ka.auth(svr="prod", product="01") #실전
     trenv = ka.getTREnv()
+    buy_price = _fetch_buy_price(symbol)
 
     result = order_cash(
         #env_dv="demo", #데모
@@ -38,6 +62,7 @@ def place_buy_order(symbol: str) -> dict:
         return {
             "symbol": symbol,
             "quantity": ORDER_QUANTITY,
+            "buy_price": buy_price,
             "success": False,
             "message": "주문 결과가 없습니다. API 오류 메시지를 확인하세요.",
         }
@@ -45,6 +70,7 @@ def place_buy_order(symbol: str) -> dict:
     return {
         "symbol": symbol,
         "quantity": ORDER_QUANTITY,
+        "buy_price": buy_price,
         "success": True,
         "result": result.to_dict(orient="records"),
     }

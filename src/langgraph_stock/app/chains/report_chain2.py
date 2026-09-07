@@ -70,9 +70,10 @@ prompt = ChatPromptTemplate.from_messages([
     ),
     (
         "human",
-        "기준 시각: {as_of}\n"
+        "기준 시각: {as_of} (한국 시각 KST, UTC로 바꾸지 말 것)\n"
         "참고 데이터: {market_context}\n"
-        "위 템플릿 형식의 전체 시장 흐름 리포트를 작성해줘.",
+        "위 템플릿 형식의 전체 시장 흐름 리포트를 작성해줘. "
+        "시각을 언급할 때는 위 한국 시각을 그대로 쓰고 UTC로 변환하지 마라.",
     ),
 ])
 
