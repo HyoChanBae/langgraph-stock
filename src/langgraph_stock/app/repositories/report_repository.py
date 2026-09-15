@@ -414,3 +414,153 @@ def save_stock_order(
         buy_price,
     )
     return order_id
+
+
+def save_stock_pick_senario(
+    report_id: int | None,
+    symbol: str,
+    stock_name: str,
+    reason: str,
+) -> int | None:
+    conn = _connect()
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO STOCK_PICKS_SENARIO (REPORT_ID, SYMBOL, STOCK_NAME, REASON)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                report_id,
+                symbol,
+                stock_name or None,
+                str(reason),
+            ),
+        )
+        cur.execute("SELECT MAX(ID) FROM STOCK_PICKS_SENARIO")
+        pick_id = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+
+    logger.info(
+        "[ReportRepository] saved STOCK_PICKS_SENARIO id=%s symbol=%s",
+        pick_id,
+        symbol,
+    )
+    return pick_id
+
+
+def save_bot_trade_senario(
+    bot_id: int,
+    symbol: str,
+    select_reason: str,
+    buy_price: float | None = None,
+    symbol_name: str | None = None,
+) -> int | None:
+    conn = _connect()
+    reason = str(select_reason or "")[:1000]
+    name = str(symbol_name).strip()[:200] if symbol_name else None
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO BOT_TRADE_SENARIO (
+                BOT_ID, SYMBOL, SYMBOL_NAME, SELECT_REASON, BUY_PRICE, BUY_AT
+            )
+            VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP())
+            """,
+            (
+                bot_id,
+                symbol,
+                name,
+                reason,
+                buy_price,
+            ),
+        )
+        cur.execute("SELECT MAX(TRADE_ID) FROM BOT_TRADE_SENARIO")
+        trade_id = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+
+    logger.info(
+        "[ReportRepository] saved BOT_TRADE_SENARIO id=%s bot_id=%s symbol=%s",
+        trade_id,
+        bot_id,
+        symbol,
+    )
+    return trade_id
+
+
+def update_bot_trade_price_senario(
+    trade_id: int,
+    buy_price: float | None,
+) -> None:
+    conn = _connect()
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE BOT_TRADE_SENARIO
+            SET BUY_PRICE = %s
+            WHERE TRADE_ID = %s
+            """,
+            (buy_price, trade_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    logger.info(
+        "[ReportRepository] updated BOT_TRADE_SENARIO id=%s price=%s",
+        trade_id,
+        buy_price,
+    )
+
+
+def save_stock_order_senario(
+    pick_id: int | None,
+    symbol: str,
+    buy_price: float | None,
+    buy_qty: int | None,
+    order_success: bool | None,
+    order_raw: dict | None = None,
+) -> int | None:
+    conn = _connect()
+    raw_text = json.dumps(order_raw, ensure_ascii=False, default=str) if order_raw else None
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO STOCK_ORDERS_SENARIO (
+                PICK_ID, SYMBOL, BUY_PRICE, BUY_QTY, ORDER_SUCCESS, ORDER_RAW
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                pick_id,
+                symbol,
+                buy_price,
+                buy_qty,
+                order_success,
+                raw_text,
+            ),
+        )
+        cur.execute("SELECT MAX(ID) FROM STOCK_ORDERS_SENARIO")
+        order_id = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+
+    logger.info(
+        "[ReportRepository] saved STOCK_ORDERS_SENARIO id=%s symbol=%s price=%s",
+        order_id,
+        symbol,
+        buy_price,
+    )
+    return order_id
