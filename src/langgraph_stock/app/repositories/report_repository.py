@@ -312,6 +312,7 @@ def save_bot_trade(
     conn = _connect()
     reason = str(select_reason or "")[:1000]
     name = str(symbol_name).strip()[:200] if symbol_name else None
+    buy_at = kst_now_naive()
 
     try:
         cur = conn.cursor()
@@ -320,7 +321,7 @@ def save_bot_trade(
             INSERT INTO BOT_TRADE (
                 BOT_ID, SYMBOL, SYMBOL_NAME, SELECT_REASON, BUY_PRICE, BUY_AT
             )
-            VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP())
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 bot_id,
@@ -328,6 +329,7 @@ def save_bot_trade(
                 name,
                 reason,
                 buy_price,
+                buy_at,
             ),
         )
         cur.execute("SELECT MAX(TRADE_ID) FROM BOT_TRADE")
@@ -462,6 +464,7 @@ def save_bot_trade_senario(
     conn = _connect()
     reason = str(select_reason or "")[:1000]
     name = str(symbol_name).strip()[:200] if symbol_name else None
+    buy_at = kst_now_naive()
 
     try:
         cur = conn.cursor()
@@ -470,7 +473,7 @@ def save_bot_trade_senario(
             INSERT INTO BOT_TRADE_SENARIO (
                 BOT_ID, SYMBOL, SYMBOL_NAME, SELECT_REASON, BUY_PRICE, BUY_AT
             )
-            VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP())
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 bot_id,
@@ -478,6 +481,7 @@ def save_bot_trade_senario(
                 name,
                 reason,
                 buy_price,
+                buy_at,
             ),
         )
         cur.execute("SELECT MAX(TRADE_ID) FROM BOT_TRADE_SENARIO")
