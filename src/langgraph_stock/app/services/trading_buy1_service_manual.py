@@ -2,6 +2,7 @@ import logging
 
 from app.config import settings  # noqa: F401  dotenv 로드
 from app.graphs.trading_buy1 import load_report, pick_stock, place_order, should_buy
+from app.repositories.report_repository import update_bot_trade_price
 from app.stock_order.buy import ORDER_QUANTITY, _fetch_buy_price, ka
 
 
@@ -49,6 +50,9 @@ def execute_trading_buy1_manual_logic():
 
     ka.auth(svr="prod", product="01")
     price = _fetch_buy_price(symbol)
+    trade_id = state.get("trade_id")
+    if trade_id:
+        update_bot_trade_price(trade_id, price)
 
     if not ask_confirm(symbol, stock_name, reason, price):
         logger.info("[TradingBuy1Manual] 사용자가 매수를 취소했습니다")

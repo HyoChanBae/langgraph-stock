@@ -79,7 +79,7 @@ prompt = ChatPromptTemplate.from_messages([
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
-    temperature=0.2,
+    temperature=0.5,
 )
 
 market_flow_chain = prompt | llm | StrOutputParser()

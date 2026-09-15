@@ -2,6 +2,7 @@ import logging
 
 from app.config import settings  # noqa: F401  dotenv 로드
 from app.graphs.trading_buy2 import load_report, pick_stock, place_order, should_buy
+from app.repositories.report_repository import update_bot_trade_price
 from app.stock_order.buy_overseas import (
     ORDER_QUANTITY,
     fetch_exchange_code,
@@ -59,6 +60,9 @@ def execute_trading_buy2_manual_logic():
     reason = state.get("reason") or ""
     price = fetch_yahoo_price(symbol)
     exchange = fetch_exchange_code(symbol)
+    trade_id = state.get("trade_id")
+    if trade_id:
+        update_bot_trade_price(trade_id, price)
 
     if not ask_confirm(symbol, stock_name, reason, price, exchange):
         logger.info("[TradingBuy2Manual] 사용자가 매수를 취소했습니다")

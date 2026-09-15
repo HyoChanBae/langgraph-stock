@@ -110,6 +110,39 @@ def fetch_latest_market_report() -> dict | None:
     return report
 
 
+def fetch_latest_sector_report() -> dict | None:
+    conn = _connect()
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT ID, SYMBOLS, MARKET_CONTEXT, REPORT, CREATED_AT
+            FROM MARKET_REPORTS
+            WHERE SYMBOLS = 'SECTOR'
+            ORDER BY ID DESC
+            LIMIT 1
+            """
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        logger.warning("[ReportRepository] SECTOR 리포트가 없습니다")
+        return None
+
+    report = {
+        "id": row[0],
+        "symbols": row[1],
+        "market_context": row[2],
+        "report": row[3],
+        "created_at": str(row[4]) if row[4] is not None else None,
+    }
+    logger.info("[ReportRepository] loaded SECTOR report id=%s", report["id"])
+    return report
+
+
 def _short_code_key(symbol: str) -> str:
     code = str(symbol or "").strip().upper()
     if code.startswith("A") and code[1:].isdigit():
