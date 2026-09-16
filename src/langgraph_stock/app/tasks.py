@@ -4,6 +4,7 @@ from app.celery_app import celery_app
 from app.services.report_service2 import execute_report_logic as execute_report2_logic
 from app.services.trading_buy1_service import execute_trading_buy1_logic
 from app.services.trading_buy1_service_senario import execute_trading_buy1_senario_logic
+from app.services.trading_buy2_service_senario import execute_trading_buy2_senario_logic
 from app.services.trading_service import execute_trading_logic
 
 
@@ -32,6 +33,12 @@ logger = logging.getLogger(__name__)
 def execute_trading_buy1_senario():
     logger.info("[Celery Task] trading.buy1.senario.execute")
     return execute_trading_buy1_senario_logic()
+
+
+@celery_app.task(name="trading.buy2.senario.execute")
+def execute_trading_buy2_senario():
+    logger.info("[Celery Task] trading.buy2.senario.execute")
+    return execute_trading_buy2_senario_logic()
 
 
 @celery_app.task(name="report.execute2")
