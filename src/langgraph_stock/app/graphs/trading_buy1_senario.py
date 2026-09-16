@@ -59,6 +59,13 @@ def pick_stock(state: TradingBuy1State):
         master.get("match_type"),
     )
 
+    ka.auth(svr="prod", product="01")
+    buy_price = _fetch_buy_price(symbol)
+    if buy_price is None:
+        logger.warning("[node2] 현재가 조회 실패 symbol=%s", symbol)
+    else:
+        logger.info("[node2] 현재가 %s symbol=%s", buy_price, symbol)
+
     pick_id = save_stock_pick_senario(
         report_id=state.get("report_id"),
         symbol=symbol,
@@ -70,14 +77,16 @@ def pick_stock(state: TradingBuy1State):
         symbol=symbol,
         symbol_name=stock_name,
         select_reason=reason,
+        buy_price=buy_price,
     )
 
     logger.info(
-        "[node2] 시나리오 추천 종목 %s (%s) pick_id=%s trade_id=%s",
+        "[node2] 시나리오 추천 종목 %s (%s) pick_id=%s trade_id=%s price=%s",
         symbol,
         stock_name,
         pick_id,
         trade_id,
+        buy_price,
     )
     return {
         "pick_id": pick_id,
@@ -112,7 +121,7 @@ def place_order(state: TradingBuy1State):
         order_raw=order,
     )
     trade_id = state.get("trade_id")
-    if trade_id:
+    if trade_id and buy_price is not None:
         update_bot_trade_price_senario(trade_id, buy_price)
 
     return {
