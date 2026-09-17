@@ -1,6 +1,7 @@
 import logging
 
 from app.celery_app import celery_app
+from app.services.macro_service import execute_macro_logic
 from app.services.report_service2 import execute_report_logic as execute_report2_logic
 from app.services.trading_buy1_service import execute_trading_buy1_logic
 from app.services.trading_buy1_service_senario import execute_trading_buy1_senario_logic
@@ -45,3 +46,9 @@ def execute_trading_buy2_senario():
 def execute_report2(market_context: str = "", as_of: str | None = None):
     logger.info("[Celery Task] report.execute2 as_of=%s", as_of)
     return execute_report2_logic(market_context=market_context, as_of=as_of)
+
+
+@celery_app.task(name="macro.execute")
+def execute_macro(as_of: str | None = None):
+    logger.info("[Celery Task] macro.execute as_of=%s", as_of)
+    return execute_macro_logic(as_of=as_of)
