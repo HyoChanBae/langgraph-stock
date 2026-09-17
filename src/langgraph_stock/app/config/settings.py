@@ -18,6 +18,8 @@ OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip() or None
 if OPENAI_API_KEY:
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
+FRED_API_KEY = (os.getenv("FRED_API_KEY") or "").strip() or None
+
 SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
 SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER")
 SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD") or ""
