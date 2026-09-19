@@ -3,7 +3,7 @@
 from app.macro.signals import AXIS_LABELS, NA
 
 
-TOP_SECTOR_COUNT = 4
+TOP_SECTOR_COUNT = 6
 
 
 def _join(values: list[str]) -> str:
@@ -37,10 +37,18 @@ def build_indicator_table(signals: dict) -> str:
     return "\n".join([header] + rows)
 
 
+def _layer_label(sector: dict) -> str:
+    return "하위" if sector.get("layer") == "overlay" else "부모"
+
+
+def _parent_label(sector: dict) -> str:
+    return sector.get("parent") or "-"
+
+
 def build_sector_table(sectors: list[dict]) -> str:
     header = (
-        "| 순위 | 섹터 | ETF | 매크로 점수 | 유리 요인 | 부담 요인 |\n"
-        "| --- | --- | --- | --- | --- | --- |"
+        "| 순위 | 계층 | 섹터 | 부모 | ETF | 매크로 점수 | 유리 요인 | 부담 요인 |\n"
+        "| --- | --- | --- | --- | --- | --- | --- | --- |"
     )
 
     rows = []
@@ -49,7 +57,9 @@ def build_sector_table(sectors: list[dict]) -> str:
             "| "
             + " | ".join([
                 str(rank),
+                _layer_label(sector),
                 sector["sector"],
+                _parent_label(sector),
                 sector["sector_etf"],
                 f"{sector['macro_score']}/30",
                 _join(sector["drivers"]),
@@ -92,9 +102,14 @@ def build_regime_brief(regime: dict, missing: list[str]) -> str:
 def build_sector_detail(sectors: list[dict], count: int = TOP_SECTOR_COUNT) -> str:
     blocks = []
     for rank, sector in enumerate(sectors[:count], start=1):
+        parent_line = (
+            f"- 계층: {_layer_label(sector)}"
+            + (f" (부모: {_parent_label(sector)})" if sector.get("parent") else "")
+        )
         blocks.append("\n".join([
             f"[{rank}] {sector['sector']} (ETF: {sector['sector_etf']}) - "
             f"{sector['macro_score']}/30",
+            parent_line,
             f"- 유리 요인: {_join(sector['drivers'])}",
             f"- 부담 요인: {_join(sector['headwinds'])}",
             f"- 가장 민감한 축: {sector['watch']}",
